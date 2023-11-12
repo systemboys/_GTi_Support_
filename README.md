@@ -1,3 +1,3 @@
-# _GTi_Support_
+#  GTi Support
 
 Content...
