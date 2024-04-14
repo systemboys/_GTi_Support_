@@ -16,7 +16,7 @@
 # Verifica se o Windows PowerShell está sendo executado como administrador
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Host "Este script precisa ser executado como administrador."
-    Start-Process powershell -Verb RunAs -ArgumentList "-Command irm https://github.com/systemboys/_GTi_Support_/raw/main/Windows/UtilitiesForWindows/install_gti_sis.ps1 | iex"
+    Start-Process powershell -Verb RunAs -ArgumentList "-Command irm gti1.com.br/gti-sis-stock-5/install_gti_sis.ps1 | iex"
     exit
 }
 
