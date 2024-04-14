@@ -13,13 +13,6 @@
 #
 # Licença: GPL.
 
-# Verifica se o Windows PowerShell está sendo executado como administrador
-if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "Este script precisa ser executado como administrador."
-    Start-Process powershell -Verb RunAs -ArgumentList "-Command irm gti1.com.br/gti-sis-stock-5/install_gti_sis.ps1 | iex"
-    exit
-}
-
 # Define a cor de fundo para preto
 $Host.UI.RawUI.BackgroundColor = "Black"
 Clear-Host  # Limpa a tela para aplicar a nova cor
