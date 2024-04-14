@@ -24,9 +24,6 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 $Host.UI.RawUI.BackgroundColor = "Black"
 Clear-Host  # Limpa a tela para aplicar a nova cor
 
-# Ativar a execução de scripts no PowerShell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-
 # Definindo URLs dos arquivos
 $url1 = "https://companyservices.com.br/downloads/gti_sis_stock_install.exe"
 $url2 = "https://me7yna.sn.files.1drv.com/y4mM0uZknKIhGjNs8_EMZVydcPZ_p11pVt1SZ50rBxWNgNXSqVpoFmxRnlLZY8n5X5XOII58sTWU2OsklRxlQ2BzE4mCI2gXuW84cLCADGHpccJhdqNTwSRnqeQX9K1BGbrl3Ui3s7KJeOUhJ5BL_keLWQU4LL11eLlo6t2ft8cVY2YLxJzWn_TvCWRtoRNH5VzYfFF8JQb5dP76mtTmryYPw"
