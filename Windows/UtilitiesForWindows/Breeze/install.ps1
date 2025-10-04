@@ -129,7 +129,7 @@ $principal = [Security.Principal.WindowsPrincipal]::new($currIdentity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Host "This script needs to be run as administrator."
 
-    $cmd = 'Invoke-RestMethod -Uri "https://companyservices.com.br/gti-sis-stock-5/install.ps1" | Invoke-Expression'
+    $cmd = 'Invoke-RestMethod -Uri "https://raw.githubusercontent.com/systemboys/_GTi_Support_/refs/heads/main/Windows/UtilitiesForWindows/Breeze/install.ps1" | Invoke-Expression'
     $bytes = [Text.Encoding]::Unicode.GetBytes($cmd)
     $b64   = [Convert]::ToBase64String($bytes)
 
