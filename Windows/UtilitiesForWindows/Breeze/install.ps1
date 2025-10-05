@@ -1,405 +1,334 @@
-﻿﻿# install.ps1 - Script de instalação do Breeze
-# Autor: Marcos Aurélio R. da Silva <systemboys@hotmail.com>
-# Versão: 2.0.0 - 2025-10-05 17h47 - Versão 2 do Script.
+﻿﻿# Breeze Installation Script
+# This script downloads, installs, and configures the Breeze application
 
-param(
-    [string]$OrigDesktop
-)
+# =============================================================================
+# REQUIREMENT 8: Check for Administrator privileges and auto-elevate if needed
+# =============================================================================
 
-# =====================================================================
-# CONFIGURAÇÕES DO SCRIPT
-# =====================================================================
-
-$Config = @{
-    # URLs de download
-    UrlInstaller = "http://companyservices.com.br/downloads/breeze/Install_Breeze.exe"
-    UrlThermal   = "http://companyservices.com.br/downloads/breeze/thermal_printing.exe"
-    UrlRunner    = "https://www.companyservices.com.br/gti-sis-stock-5/run_breeze.bat"
-    IconUrl      = "https://github.com/systemboys/SiSFloatBase_image/raw/main/Logo/ICOs/favicon_2.0.0.ico"
-    
-    # Nomes dos arquivos
-    FileInstallerName = "Install_Breeze.exe"
-    FileThermalName   = "thermal_printing.exe"
-    FileRunnerName    = "run_breeze.bat"
-    IconFileName      = "favicon_2.0.0.ico"
-    
-    # Diretórios
-    InstallDir = "$env:LOCALAPPDATA\Programs\Electron-WebView-Breeze"
-    MainExe    = "$env:LOCALAPPDATA\Programs\Electron-WebView-Breeze\Breeze.exe"
-    
-    # Atalho
-    ShortcutName = "Breeze.lnk"
-    ShortcutDescription = "Executar o Breeze"
-}
-
-# =====================================================================
-# FUNÇÕES AUXILIARES
-# =====================================================================
-
-function Write-Log {
-    param([string]$Message)
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    Write-Host "[$timestamp] $Message"
-}
-
+# Function to check if running as administrator
 function Test-Administrator {
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+# Function to restart script with elevated privileges
 function Start-ElevatedScript {
-    param([string]$OrigDesktop)
-    
-    Write-Log "Script não está executando como administrador. Reexecutando com privilégios elevados..."
+    Write-Host "Script is not running as administrator. Restarting with elevated privileges..." -ForegroundColor Yellow
+    Write-Host "Please click 'Yes' in the UAC prompt that appears." -ForegroundColor Cyan
     
     $scriptPath = $MyInvocation.MyCommand.Path
     $arguments = @(
         "-NoProfile"
         "-ExecutionPolicy Bypass"
         "-File `"$scriptPath`""
-        "-OrigDesktop `"$OrigDesktop`""
     )
     
     try {
         Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $arguments -Wait
         exit
     } catch {
-        Write-Log "ERRO: Não foi possível executar como administrador: $($_.Exception.Message)"
-        Write-Host "Pressione qualquer tecla para sair..."
+        Write-Host "ERROR: Could not run as administrator: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Press any key to exit..."
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
         exit 1
     }
 }
 
-function Invoke-SafeDownload {
+# Check administrator privileges
+if (-not (Test-Administrator)) {
+    Start-ElevatedScript
+}
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+# URLs for downloads
+$UrlInstaller = "http://companyservices.com.br/downloads/breeze/Install_Breeze.exe"
+$UrlThermal   = "http://companyservices.com.br/downloads/breeze/thermal_printing.exe"
+$UrlRunner    = "http://companyservices.com.br/downloads/breeze/run_breeze.bat"
+$IconUrl      = "http://companyservices.com.br/downloads/breeze/favicon_2.0.0.ico"
+
+# File names
+$FileInstallerName = "Install_Breeze.exe"
+$FileThermalName   = "thermal_printing.exe"
+$FileRunnerName    = "run_breeze.bat"
+$IconFileName      = "favicon_2.0.0.ico"
+
+# Directories
+$InstallDir = "$env:LOCALAPPDATA\Programs\Electron-WebView-Breeze"
+$MainExe    = "$env:LOCALAPPDATA\Programs\Electron-WebView-Breeze\Breeze.exe"
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+# Function to display progress
+function Show-Progress {
     param(
-        [string]$Url,
-        [string]$Destination,
-        [string]$Description = "Downloading"
+        [string]$Message,
+        [int]$Step,
+        [int]$Total
     )
     
-    Write-Log "Iniciando download: $Description"
-    Write-Log "URL: $Url"
-    Write-Log "Destino: $Destination"
+    $percentage = [math]::Round(($Step / $Total) * 100)
+    $progressBar = "[" + ("o" * [math]::Floor($percentage / 10)) + (" " * (10 - [math]::Floor($percentage / 10))) + "]"
     
-    # Garantir que o diretório de destino existe
-    $destDir = Split-Path -Path $Destination -Parent
-    if (-not (Test-Path $destDir)) {
-        New-Item -Path $destDir -ItemType Directory -Force | Out-Null
-    }
-    
-    try {
-        # Configurar TLS
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        
-        # Download com progresso
-        $webClient = New-Object System.Net.WebClient
-        
-        # Evento de progresso
-        Register-ObjectEvent -InputObject $webClient -EventName DownloadProgressChanged -Action {
-            $Global:downloadProgress = $Event.SourceEventArgs.ProgressPercentage
-        } | Out-Null
-        
-        Register-ObjectEvent -InputObject $webClient -EventName DownloadFileCompleted -Action {
-            $Global:downloadCompleted = $true
-        } | Out-Null
-        
-        $Global:downloadCompleted = $false
-        $Global:downloadProgress = 0
-        
-        # Iniciar download
-        $webClient.DownloadFileAsync([uri]$Url, $Destination)
-        
-        # Mostrar progresso
-        while (-not $Global:downloadCompleted) {
-            Write-Progress -Activity $Description -Status "$($Global:downloadProgress)% completo" -PercentComplete $Global:downloadProgress
-            Start-Sleep -Milliseconds 100
-        }
-        
-        Write-Progress -Activity $Description -Completed
-        
-        # Verificar se o arquivo foi baixado
-        if (Test-Path $Destination) {
-            $fileSize = (Get-Item $Destination).Length
-            Write-Log "Download concluído com sucesso! Tamanho: $([math]::Round($fileSize/1MB, 2)) MB"
-            return $true
-        } else {
-            throw "Arquivo não foi baixado corretamente"
-        }
-        
-    } catch {
-        Write-Log "ERRO no download: $($_.Exception.Message)"
-        return $false
-    } finally {
-        # Limpar eventos
-        if ($webClient) {
-            $webClient.Dispose()
-        }
-        Get-EventSubscriber | Where-Object { $_.SourceObject -eq $webClient } | Unregister-Event
-    }
+    Write-Host "`n$progressBar $percentage% - $Message" -ForegroundColor Green
 }
 
-function Remove-DesktopShortcuts {
-    param([string]$DesktopPath)
-    
-    Write-Log "Removendo atalhos existentes do Breeze na área de trabalho..."
-    
-    try {
-        # Procurar por atalhos relacionados ao Breeze
-        $shortcuts = Get-ChildItem -Path $DesktopPath -Filter "*.lnk" -ErrorAction SilentlyContinue
-        
-        foreach ($shortcut in $shortcuts) {
-            try {
-                $shell = New-Object -ComObject WScript.Shell
-                $link = $shell.CreateShortcut($shortcut.FullName)
-                
-                # Verificar se o atalho aponta para o Breeze
-                if ($link.TargetPath -like "*Breeze*" -or $shortcut.Name -like "*Breeze*") {
-                    Write-Log "Removendo atalho: $($shortcut.Name)"
-                    Remove-Item -Path $shortcut.FullName -Force
-                }
-            } catch {
-                Write-Log "Aviso: Não foi possível verificar/remover $($shortcut.Name)"
-            }
-        }
-    } catch {
-        Write-Log "Aviso: Erro ao remover atalhos existentes: $($_.Exception.Message)"
-    }
-}
-
-function New-DesktopShortcut {
+# Function to download file with progress
+function Download-File {
     param(
-        [string]$TargetPath,
-        [string]$IconPath,
-        [string]$ShortcutPath,
+        [string]$Url,
+        [string]$OutputPath,
         [string]$Description
     )
     
-    Write-Log "Criando atalho na área de trabalho..."
+    Write-Host "`nDownloading $Description..." -ForegroundColor Yellow
+    Write-Host "URL: $Url" -ForegroundColor Gray
+    Write-Host "Saving to: $OutputPath" -ForegroundColor Gray
     
     try {
-        $shell = New-Object -ComObject WScript.Shell
-        $shortcut = $shell.CreateShortcut($ShortcutPath)
-        $shortcut.TargetPath = $TargetPath
+        # Configure TLS
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         
-        if (Test-Path $IconPath) {
-            $shortcut.IconLocation = $IconPath
-        }
+        # Download with progress
+        $webClient = New-Object System.Net.WebClient
+        $webClient.DownloadFile($Url, $OutputPath)
         
-        $shortcut.Description = $Description
-        $shortcut.Save()
-        
-        Write-Log "Atalho criado com sucesso: $ShortcutPath"
+        Write-Host "$Description downloaded successfully!" -ForegroundColor Green
         return $true
     } catch {
-        Write-Log "ERRO ao criar atalho: $($_.Exception.Message)"
+        Write-Host "ERROR downloading $Description`: $($_.Exception.Message)" -ForegroundColor Red
         return $false
+    } finally {
+        if ($webClient) { $webClient.Dispose() }
     }
 }
 
-# =====================================================================
-# SCRIPT PRINCIPAL
-# =====================================================================
+# Function to wait for process to complete
+function Wait-ForProcess {
+    param([string]$ProcessName)
+    
+    do {
+        Start-Sleep -Milliseconds 500
+        $process = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue
+    } while ($process)
+}
 
-# Configurar console
-try {
-    Clear-Host
-    $Host.UI.RawUI.BackgroundColor = "Black"
-    $Host.UI.RawUI.ForegroundColor = "White"
-} catch {}
+# =============================================================================
+# MAIN INSTALLATION PROCESS
+# =============================================================================
 
+# Clear screen and show header
+Clear-Host
 Write-Host "===============================================" -ForegroundColor Cyan
-Write-Host "    INSTALADOR DO BREEZE - v2.0.0" -ForegroundColor Cyan
+Write-Host "        BREEZE INSTALLATION SCRIPT" -ForegroundColor Cyan
 Write-Host "===============================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Verificar privilégios de administrador
-if (-not (Test-Administrator)) {
-    $desktopPath = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::DesktopDirectory)
-    if ([string]::IsNullOrWhiteSpace($OrigDesktop)) {
-        Start-ElevatedScript -OrigDesktop $desktopPath
-    } else {
-        Start-ElevatedScript -OrigDesktop $OrigDesktop
+$totalSteps = 7
+$currentStep = 0
+
+# =============================================================================
+# REQUIREMENT 1: Create temporary directory
+# =============================================================================
+$currentStep++
+Show-Progress "Creating temporary directory" $currentStep $totalSteps
+
+$tempDir = Join-Path $env:TEMP "Install_Breeze"
+
+try {
+    if (Test-Path $tempDir) {
+        Write-Host "Removing existing temporary directory..." -ForegroundColor Yellow
+        Remove-Item $tempDir -Recurse -Force
     }
+    
+    New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+    Write-Host "Temporary directory created: $tempDir" -ForegroundColor Green
+} catch {
+    Write-Host "ERROR creating temporary directory: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Press any key to exit..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit 1
 }
 
-Write-Log "Script executando com privilégios de administrador"
-
-# Definir caminhos
-$tempDir = $env:TEMP
-$desktopPath = if ([string]::IsNullOrWhiteSpace($OrigDesktop)) {
-    [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::DesktopDirectory)
-} else {
-    $OrigDesktop
-}
-
-$tempFiles = @{
-    Installer = Join-Path $tempDir $Config.FileInstallerName
-    Thermal   = Join-Path $tempDir $Config.FileThermalName
-    Runner    = Join-Path $tempDir $Config.FileRunnerName
-    Icon      = Join-Path $tempDir $Config.IconFileName
-}
-
-$installFiles = @{
-    Thermal = Join-Path $Config.InstallDir $Config.FileThermalName
-    Runner  = Join-Path $Config.InstallDir $Config.FileRunnerName
-    Icon    = Join-Path $Config.InstallDir $Config.IconFileName
-}
-
-$shortcutPath = Join-Path $desktopPath $Config.ShortcutName
-
-Write-Log "Diretório temporário: $tempDir"
-Write-Log "Diretório de instalação: $($Config.InstallDir)"
-Write-Log "Área de trabalho: $desktopPath"
-
-# =====================================================================
-# DOWNLOAD DOS ARQUIVOS
-# =====================================================================
-
-Write-Log "Iniciando downloads..."
-
-$downloads = @(
-    @{ Url = $Config.UrlInstaller; Dest = $tempFiles.Installer; Desc = "Instalador do Breeze" },
-    @{ Url = $Config.UrlThermal; Dest = $tempFiles.Thermal; Desc = "Componente de impressão térmica" },
-    @{ Url = $Config.UrlRunner; Dest = $tempFiles.Runner; Desc = "Script de execução" },
-    @{ Url = $Config.IconUrl; Dest = $tempFiles.Icon; Desc = "Ícone do aplicativo" }
-)
+# =============================================================================
+# REQUIREMENT 2: Download all required files
+# =============================================================================
+$currentStep++
+Show-Progress "Downloading installation files" $currentStep $totalSteps
 
 $downloadSuccess = $true
-foreach ($download in $downloads) {
-    if (-not (Invoke-SafeDownload -Url $download.Url -Destination $download.Dest -Description $download.Desc)) {
-        $downloadSuccess = $false
-        break
-    }
+
+# Download Install_Breeze.exe
+if (-not (Download-File $UrlInstaller (Join-Path $tempDir $FileInstallerName) "Main Installer")) {
+    $downloadSuccess = $false
+}
+
+# Download thermal_printing.exe
+if (-not (Download-File $UrlThermal (Join-Path $tempDir $FileThermalName) "Thermal Printing Module")) {
+    $downloadSuccess = $false
+}
+
+# Download run_breeze.bat
+if (-not (Download-File $UrlRunner (Join-Path $tempDir $FileRunnerName) "Runner Script")) {
+    $downloadSuccess = $false
+}
+
+# Download favicon_2.0.0.ico
+if (-not (Download-File $IconUrl (Join-Path $tempDir $IconFileName) "Application Icon")) {
+    $downloadSuccess = $false
 }
 
 if (-not $downloadSuccess) {
-    Write-Log "ERRO: Falha no download de um ou mais arquivos"
-    Write-Host "Pressione qualquer tecla para sair..."
+    Write-Host "`nOne or more downloads failed. Installation cannot continue." -ForegroundColor Red
+    Write-Host "Press any key to exit..."
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit 1
 }
 
-Write-Log "Todos os downloads foram concluídos com sucesso!"
+Write-Host "`nAll files downloaded successfully!" -ForegroundColor Green
 
-# =====================================================================
-# INSTALAÇÃO DO BREEZE
-# =====================================================================
+# =============================================================================
+# REQUIREMENT 3: Silent installation of Install_Breeze.exe
+# =============================================================================
+$currentStep++
+Show-Progress "Installing Breeze application" $currentStep $totalSteps
 
-Write-Log "Executando instalador do Breeze..."
+$installerPath = Join-Path $tempDir $FileInstallerName
+
+Write-Host "`nStarting silent installation..." -ForegroundColor Yellow
+Write-Host "This may take a few minutes. Please wait..." -ForegroundColor Gray
 
 try {
-    # Parâmetros para instalação silenciosa
-    $installArgs = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-')
+    # Run installer silently
+    $process = Start-Process -FilePath $installerPath -ArgumentList "/S" -Wait -PassThru
     
-    # Executar instalador
-    $process = Start-Process -FilePath $tempFiles.Installer -ArgumentList $installArgs -Wait -PassThru -NoNewWindow
-    
-    Write-Log "Instalador finalizado. Código de saída: $($process.ExitCode)"
-    
-    if ($process.ExitCode -ne 0) {
-        Write-Log "AVISO: Instalador retornou código de erro $($process.ExitCode)"
+    if ($process.ExitCode -eq 0) {
+        Write-Host "Breeze installed successfully!" -ForegroundColor Green
+    } else {
+        Write-Host "Installation completed with exit code: $($process.ExitCode)" -ForegroundColor Yellow
     }
-    
 } catch {
-    Write-Log "ERRO ao executar instalador: $($_.Exception.Message)"
-    Write-Host "Pressione qualquer tecla para sair..."
+    Write-Host "ERROR during installation: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Press any key to exit..."
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit 1
 }
 
-# Aguardar um pouco para garantir que a instalação foi finalizada
+# Wait a bit for installation to complete
 Start-Sleep -Seconds 3
 
-# Verificar se o Breeze foi instalado
-if (-not (Test-Path $Config.MainExe)) {
-    Write-Log "ERRO: Breeze não foi instalado corretamente em $($Config.MainExe)"
-    Write-Host "Pressione qualquer tecla para sair..."
+# =============================================================================
+# REQUIREMENT 5: Copy additional files to installation directory
+# =============================================================================
+$currentStep++
+Show-Progress "Copying additional files" $currentStep $totalSteps
+
+if (-not (Test-Path $InstallDir)) {
+    Write-Host "Installation directory not found: $InstallDir" -ForegroundColor Red
+    Write-Host "Press any key to exit..."
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit 1
 }
 
-Write-Log "Breeze instalado com sucesso em $($Config.MainExe)"
+$filesToCopy = @($FileThermalName, $FileRunnerName, $IconFileName)
 
-# =====================================================================
-# LIMPEZA E ORGANIZAÇÃO
-# =====================================================================
-
-# Remover atalhos existentes do Breeze na área de trabalho
-Remove-DesktopShortcuts -DesktopPath $desktopPath
-
-# Remover instalador temporário
-Write-Log "Removendo instalador temporário..."
-try {
-    Remove-Item -Path $tempFiles.Installer -Force -ErrorAction SilentlyContinue
-} catch {
-    Write-Log "Aviso: Não foi possível remover o instalador temporário"
-}
-
-# Garantir que o diretório de instalação existe
-if (-not (Test-Path $Config.InstallDir)) {
-    Write-Log "ERRO: Diretório de instalação não encontrado: $($Config.InstallDir)"
-    Write-Host "Pressione qualquer tecla para sair..."
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    exit 1
-}
-
-# Copiar arquivos para o diretório de instalação
-Write-Log "Copiando arquivos adicionais para o diretório de instalação..."
-
-$copyFiles = @(
-    @{ Source = $tempFiles.Thermal; Dest = $installFiles.Thermal },
-    @{ Source = $tempFiles.Runner; Dest = $installFiles.Runner },
-    @{ Source = $tempFiles.Icon; Dest = $installFiles.Icon }
-)
-
-foreach ($copy in $copyFiles) {
-    try {
-        Write-Log "Copiando $($copy.Source) para $($copy.Dest)"
-        Copy-Item -Path $copy.Source -Destination $copy.Dest -Force
-        Write-Log "Arquivo copiado com sucesso"
-    } catch {
-        Write-Log "ERRO ao copiar arquivo: $($_.Exception.Message)"
+foreach ($file in $filesToCopy) {
+    $sourcePath = Join-Path $tempDir $file
+    $destPath = Join-Path $InstallDir $file
+    
+    if (Test-Path $sourcePath) {
+        try {
+            Copy-Item $sourcePath $destPath -Force
+            Write-Host "Copied $file to installation directory" -ForegroundColor Green
+        } catch {
+            Write-Host "Warning: Could not copy $file`: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "Warning: Source file not found: $file" -ForegroundColor Yellow
     }
 }
 
-# =====================================================================
-# CRIAÇÃO DO ATALHO
-# =====================================================================
+# =============================================================================
+# REQUIREMENT 5: Create desktop shortcut with custom icon
+# =============================================================================
+$currentStep++
+Show-Progress "Creating desktop shortcut" $currentStep $totalSteps
 
-Write-Log "Criando atalho na área de trabalho..."
-
-$shortcutCreated = New-DesktopShortcut -TargetPath $installFiles.Runner -IconPath $installFiles.Icon -ShortcutPath $shortcutPath -Description $Config.ShortcutDescription
-
-if (-not $shortcutCreated) {
-    Write-Log "AVISO: Não foi possível criar o atalho na área de trabalho"
-}
-
-# =====================================================================
-# LIMPEZA FINAL
-# =====================================================================
-
-Write-Log "Removendo arquivos temporários..."
 try {
-    Remove-Item -Path $tempFiles.Thermal, $tempFiles.Runner, $tempFiles.Icon -Force -ErrorAction SilentlyContinue
-    Write-Log "Arquivos temporários removidos"
+    # Remove existing Breeze shortcuts from desktop
+    $desktopPath = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::DesktopDirectory)
+    $existingShortcuts = Get-ChildItem -Path $desktopPath -Filter "*Breeze*" -File
+    
+    foreach ($shortcut in $existingShortcuts) {
+        Write-Host "Removing existing shortcut: $($shortcut.Name)" -ForegroundColor Yellow
+        Remove-Item $shortcut.FullName -Force
+    }
+    
+    # Create new shortcut for run_breeze.bat
+    $runnerPath = Join-Path $InstallDir $FileRunnerName
+    $iconPath = Join-Path $InstallDir $IconFileName
+    $shortcutPath = Join-Path $desktopPath "Breeze.lnk"
+    
+    if (Test-Path $runnerPath) {
+        $WshShell = New-Object -comObject WScript.Shell
+        $Shortcut = $WshShell.CreateShortcut($shortcutPath)
+        $Shortcut.TargetPath = $runnerPath
+        $Shortcut.WorkingDirectory = $InstallDir
+        $Shortcut.Description = "Executar o Breeze"
+        
+        if (Test-Path $iconPath) {
+            $Shortcut.IconLocation = $iconPath
+        }
+        
+        $Shortcut.Save()
+        Write-Host "Desktop shortcut created successfully!" -ForegroundColor Green
+        Write-Host "  Target: $runnerPath" -ForegroundColor Gray
+        Write-Host "  Icon: $iconPath" -ForegroundColor Gray
+    } else {
+        Write-Host "Warning: Runner script not found, shortcut not created" -ForegroundColor Yellow
+    }
 } catch {
-    Write-Log "Aviso: Não foi possível remover alguns arquivos temporários"
+    Write-Host "Warning: Could not create desktop shortcut: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
-# =====================================================================
-# FINALIZAÇÃO
-# =====================================================================
+# =============================================================================
+# REQUIREMENT 6: Clean up temporary files
+# =============================================================================
+$currentStep++
+Show-Progress "Cleaning up temporary files" $currentStep $totalSteps
 
-Write-Host ""
+try {
+    if (Test-Path $tempDir) {
+        Remove-Item $tempDir -Recurse -Force
+        Write-Host "Temporary files cleaned up successfully!" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "Warning: Could not clean up temporary files: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
+# =============================================================================
+# INSTALLATION COMPLETE
+# =============================================================================
+$currentStep++
+Show-Progress "Installation completed successfully!" $currentStep $totalSteps
+
+Write-Host "`n===============================================" -ForegroundColor Green
+Write-Host "        INSTALLATION COMPLETED!" -ForegroundColor Green
 Write-Host "===============================================" -ForegroundColor Green
-Write-Host "    INSTALAÇÃO CONCLUÍDA COM SUCESSO!" -ForegroundColor Green
-Write-Host "===============================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "O Breeze foi instalado em: $($Config.InstallDir)" -ForegroundColor Yellow
-Write-Host "Atalho criado na área de trabalho: $($Config.ShortcutName)" -ForegroundColor Yellow
+Write-Host "Breeze has been installed successfully!" -ForegroundColor Green
+Write-Host "Desktop shortcut created with custom icon" -ForegroundColor Green
+Write-Host "All temporary files cleaned up" -ForegroundColor Green
 Write-Host ""
-Write-Host "Pressione qualquer tecla para sair..." -ForegroundColor Cyan
+Write-Host "Installation directory: $InstallDir" -ForegroundColor Cyan
+Write-Host "Main executable: $MainExe" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "You can now run Breeze from the desktop shortcut or the installation directory." -ForegroundColor White
+Write-Host ""
+Write-Host "Press any key to exit..."
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-
