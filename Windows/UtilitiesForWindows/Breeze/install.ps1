@@ -15,40 +15,6 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     exit
 }
 
-# Function to check if running as administrator
-function Test-Administrator {
-    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
-    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-}
-
-# Function to restart script with elevated privileges
-function Start-ElevatedScript {
-    Write-Host "Script is not running as administrator. Restarting with elevated privileges..." -ForegroundColor Yellow
-    Write-Host "Please click 'Yes' in the UAC prompt that appears." -ForegroundColor Cyan
-    
-    $scriptPath = $MyInvocation.MyCommand.Path
-    $arguments = @(
-        "-NoProfile"
-        "-ExecutionPolicy Bypass"
-        "-File `"$scriptPath`""
-    )
-    
-    try {
-        Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $arguments -Wait
-        exit
-    } catch {
-        Write-Host "ERROR: Could not run as administrator: $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host "Press any key to exit..."
-        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-        exit 1
-    }
-}
-
-# Check administrator privileges
-if (-not (Test-Administrator)) {
-    Start-ElevatedScript
-}
 
 # =============================================================================
 # CONFIGURATION
