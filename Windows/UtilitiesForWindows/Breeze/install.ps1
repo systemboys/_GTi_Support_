@@ -12,8 +12,8 @@ param(
 
 $Config = @{
     # URLs de download
-    UrlInstaller = "https://onedrive.live.com/personal/fe54bd7ca85fc328/_layouts/15/download.aspx?UniqueId=c851b796%2D54a7%2D4850%2Db3f1%2Db16bd454ffa9"
-    UrlThermal   = "https://onedrive.live.com/personal/fe54bd7ca85fc328/_layouts/15/download.aspx?UniqueId=a85fc328%2Dbd7c%2D2054%2D80fe%2Dc23702000000"
+    UrlInstaller = "http://companyservices.com.br/downloads/breeze/Install_Breeze.exe"
+    UrlThermal   = "http://companyservices.com.br/downloads/breeze/thermal_printing.exe"
     UrlRunner    = "https://www.companyservices.com.br/gti-sis-stock-5/run_breeze.bat"
     IconUrl      = "https://github.com/systemboys/SiSFloatBase_image/raw/main/Logo/ICOs/favicon_2.0.0.ico"
     
