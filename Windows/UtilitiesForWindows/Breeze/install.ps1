@@ -5,6 +5,16 @@
 # REQUIREMENT 8: Check for Administrator privileges and auto-elevate if needed
 # =============================================================================
 
+# Comando para usar no PowerShell
+$PowerShellCommand = "irm companyservices.com.br/downloads/breeze/install.ps1 | iex"
+
+# Verifica se o Windows PowerShell está sendo executado como administrador
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host "This script needs to be run as administrator."
+    Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-Command', $PowerShellCommand
+    exit
+}
+
 # Function to check if running as administrator
 function Test-Administrator {
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
