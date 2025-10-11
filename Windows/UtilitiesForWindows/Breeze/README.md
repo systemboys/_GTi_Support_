@@ -2,7 +2,7 @@
 
 ## Instalação Rápida via PowerShell
 
-O arquivo `install.ps1` deveser hospedado em um servidor e disponível para download e execução automática através do Windows PowerShell.
+O arquivo `install.ps1` deve ser hospedado em um servidor e disponível para download e execução automática através do Windows PowerShell.
 
 ### Como instalar
 
