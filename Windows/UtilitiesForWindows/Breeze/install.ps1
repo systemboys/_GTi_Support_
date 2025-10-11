@@ -6,7 +6,7 @@
 # =============================================================================
 
 # Comando para usar no PowerShell
-$PowerShellCommand = "irm companyservices.com.br/downloads/breeze/install.ps1 | iex"
+$PowerShellCommand = "irm install-breeze.systemboys.com.br | iex"
 
 # Verifica se o Windows PowerShell está sendo executado como administrador
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
