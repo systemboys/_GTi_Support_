@@ -21,10 +21,10 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 # =============================================================================
 
 # URLs for downloads
-$UrlInstaller = "https://download848.mediafire.com/3idcu4qbyozgql_is97bCg__yM5fa1yhVaLE7sZ0nDOl4OjIYjCrGLKfIGHyKOfJP28FkAcWQlyZqTSdrnd4kurup-66E4-CGKWcW9kDhqvFbhyVj4Mj3-tr0P6S-RZKORck8UCVS6x7JkFvcQx1IRC0w9HF3ZmLIL9fIDICimoyIQ/wlrehs7sdpl1cnq/Install_Breeze.exe"
-$UrlThermal   = "https://download1585.mediafire.com/bzggzqk35y3guE40tQTnQry68ymlb1sJesKF6v2y9w6XgelCdHFrAjB2t4jOhGaIayNSTqSoUyFh-zR3E7KvAl4bNZWUjKBI1LSdZZanQjfUPhgfNAIjNGv7qN_eLMvWsRd7jtstWHmGd2S7RH18uW0nLP7iiVHGBQZN9tpv4uiZCQ/cpkz5b19cwmkh2q/thermal_printing.exe"
-$UrlRunner    = "https://download1320.mediafire.com/awe90kyzdchgLSZFUb6AnyayDJ6UCRd7I2S9ScfhcvCyWerlRDq2ufZC4ytuaNmIDSicMtS7QRCw4BEfGN-BW3b7y46U5m1YSKO4zrSvYlxtxXPxp6Ln21VbCQSiB2Hvw3ZarWyzSzOXnbtIjyzeOlrvhOI-xqkPgJy5nBemkWRTqQ/cru6u43fnd2zjkb/run_breeze.bat"
-$IconUrl      = "https://download937.mediafire.com/a0m34j3r3yggaYRXsZ71TjticbUkX0WQQUnFH75BbDHvrD8bpEoWS8yFebu36wh_sJYKySzyIRF7167UEHBLmDkA7IQPBOqmBvs-pUU8t1FppX5krm8NGGUG7p6SsphFZqqyZFo9lvOJP8jJ2lIb9k1HR0CgdYfIiGdsURQ5Z9jHFw/o35j8uz0os6oi64/favicon_2.0.0.ico"
+$UrlInstaller = "https://www.url.file.com/Install_Breeze.exe"
+$UrlThermal   = "https://www.url.file.com/thermal_printing.exe"
+$UrlRunner    = "https://www.url.file.com/run_breeze.bat"
+$IconUrl      = "https://www.url.file.com/favicon_2.0.0.ico"
 
 # File names
 $FileInstallerName = "Install_Breeze.exe"
